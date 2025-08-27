@@ -2,89 +2,89 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Modern Bright Journal Manager Design System */
+/* Modern Bright Journal Manager – Brand #20764d & #191a1d */
 
 @layer base {
   :root {
-    /* Bright modern backgrounds */
+    /* Bright modern backgrounds (tetap) */
     --background: 210 40% 98%;
     --foreground: 222 47% 11%;
-    
+
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
-    
+
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
-    
-    /* Vibrant emerald primary */
-    --primary: 158 64% 52%;
+
+    /* Brand colors */
+    /* #20764d -> hsl(151, 57%, 29%) */
+    --primary: 151 57% 29%;
     --primary-foreground: 0 0% 100%;
-    
+
+    /* Netral sekunder tetap terang untuk UI cerah */
     --secondary: 210 40% 96%;
     --secondary-foreground: 222 47% 11%;
-    
+
     --muted: 210 40% 96%;
     --muted-foreground: 215 16% 47%;
-    
-    --accent: 158 64% 96%;
-    --accent-foreground: 158 64% 11%;
-    
-    /* Vibrant destructive */
+
+    /* Accent = tint dari brand hijau */
+    --accent: 151 57% 96%;
+    --accent-foreground: 151 57% 14%;
+
+    /* Destructive tetap */
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    
+
     --border: 214 32% 91%;
     --input: 0 0% 100%;
-    --ring: 158 64% 52%;
-    
+    --ring: 151 57% 29%;
+
     --radius: 0.75rem;
-    
-    /* Custom journal tokens - bright theme */
-    --journal-bg: 158 64% 97%;
+
+    /* Custom journal tokens - tuned to brand */
+    --journal-bg: 151 57% 97%;
     --journal-card: 0 0% 100%;
-    --journal-card-hover: 158 64% 96%;
-    --journal-border: 158 20% 88%;
+    --journal-card-hover: 151 57% 96%;
+    --journal-border: 151 20% 85%;
     --journal-divider: 214 32% 91%;
-    
+
     /* Navbar/Footer */
     --navbar-bg: 0 0% 100%;
-    --navbar-shadow: 158 20% 88%;
-    
-    /* Upload zone - bright */
+    --navbar-shadow: 151 20% 85%;
+
+    /* Upload zone */
     --upload-zone: 0 0% 100%;
-    --upload-zone-hover: 158 64% 52%;
-    --upload-zone-border: 158 20% 88%;
-    
-    /* Skeleton shimmer - bright */
+    --upload-zone-hover: 151 57% 29%;
+    --upload-zone-border: 151 20% 85%;
+
+    /* Skeleton shimmer */
     --skeleton-bg: 210 40% 96%;
     --skeleton-shimmer: 214 32% 91%;
-    
-    /* Toast styles - vibrant */
+
+    /* Toast styles */
     --toast-success: 142 71% 45%;
     --toast-error: 0 84% 60%;
-    
-    /* Gradients */
-    --gradient-primary: linear-gradient(135deg, #08a048, #08a048);
+
+    /* Gradients – pakai dua warna brand */
+    --gradient-primary: linear-gradient(135deg, #20764d, #191a1d);
     --gradient-secondary: linear-gradient(135deg, #f0fdf4, #ecfdf5);
-    --gradient-accent: linear-gradient(135deg, #f0f9ff, #e0f2fe);
-    
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
+    --gradient-accent: linear-gradient(135deg, #eaf7f0, #f3fbf6);
+
+    /* Sidebar in dark brand */
+    /* #191a1d -> hsl(225, 7%, 11%) */
+    --sidebar-background: 225 7% 11%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 151 57% 29%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-accent: 225 7% 16%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 225 7% 16%;
+    --sidebar-ring: 151 57% 29%;
   }
 }
 
 @layer base {
-  * {
-    @apply border-border;
-  }
-
-  body {
-    @apply bg-background text-foreground;
-  }
+  * { @apply border-border; }
+  body { @apply bg-background text-foreground; }
 }

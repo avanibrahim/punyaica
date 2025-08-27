@@ -18,15 +18,21 @@ export const Navbar = () => {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3 group">
-            <div className="p-2 bg-gradient-primary rounded-lg shadow-lg group-hover:scale-105 transition-transform">
-              <FileText className="h-6 w-6 text-white" />
+            <div className="p-2 bg-transparant group-hover:scale-105 transition-transform">
+            <img
+            src="logo.png"
+            alt="Logo e‑Journal"
+            className="h-10 w-auto group-hover:scale-105 transition-transform"
+            loading="eager"
+            decoding="async"
+            />
             </div>
             <div className="hidden sm:block">
               <h1 className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-                Manajer Jurnal
+                Prokernya Icaaa
               </h1>
               <p className="text-xs text-muted-foreground -mt-1">
-                Kelola file dengan mudah
+                Kelola Jurnal dengan mudah
               </p>
             </div>
           </Link>

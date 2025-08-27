@@ -1,31 +1,69 @@
+// src/pages/Upload.tsx
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Upload as UploadIcon, Sparkles, Lightbulb } from 'lucide-react';
+
+import { Layout } from '@/components/Layout';
 import { useToast } from '@/hooks/useToast';
 import { ToastContainer } from '@/components/Toast';
-import { FileUpload } from '@/components/FileUpload';
-import { Layout } from '@/components/Layout';
-import { Upload as UploadIcon, Sparkles, Lightbulb } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import  FileUpload  from '@/components/FileUpload';
 
-const Upload = () => {
+// ⬇️ helper Supabase yang sudah kita buat sebelumnya
+import { uploadFile } from '@/lib/supaFiles';
+
+export default function Upload() {
   const toast = useToast();
   const navigate = useNavigate();
 
-  // Handle upload success
-  const handleUploadSuccess = () => {
-    toast.success('Upload berhasil');
-    // Redirect to journal list after successful upload
-    setTimeout(() => {
-      navigate('/');
-    }, 1500);
+  const [title, setTitle] = useState('');
+  const [file, setFile] = useState<File | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const onFilePick = (f: File | undefined) => {
+    if (!f) return;
+    setFile(f);
   };
 
-  // Handle upload error
-  const handleUploadError = (error: string) => {
-    toast.error(`Upload gagal: ${error}`);
+  const onDrop: React.DragEventHandler<HTMLLabelElement> = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(false);
+    const f = e.dataTransfer.files?.[0];
+    onFilePick(f);
   };
 
-  // Handle upload start
-  const handleUploadStart = () => {
-    toast.info('Memulai upload...');
+  const handleUploadStart = () => { toast.info('Memulai upload...'); };
+const handleUploadSuccess = () => {
+  toast.success('Upload berhasil');
+  setTimeout(() => navigate('/'), 1500);
+};
+const handleUploadError = (msg: string) => { toast.error(`Upload gagal: ${msg}`); };
+
+
+  const onSubmit: React.FormEventHandler = async e => {
+    e.preventDefault();
+    if (!file) {
+      toast.error('Pilih file dulu ya.');
+      return;
+    }
+    try {
+      setIsUploading(true);
+      toast.info('Memulai upload…');
+
+      await uploadFile(file, title || undefined);
+
+      toast.success('Upload berhasil');
+      setTitle('');
+      setFile(null);
+
+      // redirect ke daftar jurnal
+      setTimeout(() => navigate('/'), 1200);
+    } catch (err: any) {
+      toast.error(`Upload gagal: ${err?.message || 'terjadi kesalahan'}`);
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   return (
@@ -38,21 +76,18 @@ const Upload = () => {
             <h1 className="text-3xl md:text-4xl font-bold text-foreground">Upload File</h1>
           </div>
           <p className="text-muted-foreground flex items-center justify-center gap-2">
-            <span>Drag & Drop</span>
-            <Sparkles className="h-4 w-4" />
-            <span>Progress Bar</span>
-            <Sparkles className="h-4 w-4" />
-            <span>Upload Mudah</span>
+            <span>Drag & Drop | Progress Bar | Upload Mudah</span>
           </p>
         </header>
-
+        
         <div className="space-y-6">
           {/* Upload Section */}
-          <FileUpload 
+          <FileUpload
+            onUploadStart={handleUploadStart}
             onUploadSuccess={handleUploadSuccess}
             onUploadError={handleUploadError}
-            onUploadStart={handleUploadStart}
           />
+
 
           {/* Help Section */}
           <div className="bg-gradient-accent border border-journal-border rounded-2xl p-6 shadow-xl">
@@ -98,6 +133,4 @@ const Upload = () => {
       <ToastContainer toasts={toast.toasts} onRemove={toast.removeToast} />
     </Layout>
   );
-};
-
-export default Upload;
+}

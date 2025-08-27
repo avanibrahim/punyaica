@@ -1,85 +1,121 @@
-import { useState, useRef, DragEvent, ChangeEvent } from 'react';
+// src/components/FileUpload.tsx
+import React, { useEffect, useRef, useState } from 'react';
 import { Upload, FileText } from 'lucide-react';
-import { uploadFile, type UploadProgress } from '@/lib/fileUtils';
+import { uploadFile } from '@/lib/supaFiles';
 
-interface FileUploadProps {
-  onUploadSuccess: () => void;
-  onUploadError: (error: string) => void;
-  onUploadStart: () => void;
+export type FileUploadProps = {
+  onUploadStart?: () => void;
+  onUploadSuccess?: () => void;
+  onUploadError?: (error: string) => void;
+  maxSizeMb?: number; // default 50MB
+};
+
+const DEFAULT_MAX_MB = 50;
+
+function bytesFmt(n: number) {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export const FileUpload = ({ onUploadSuccess, onUploadError, onUploadStart }: FileUploadProps) => {
+function FileUpload({
+  onUploadStart,
+  onUploadSuccess,
+  onUploadError,
+  maxSizeMb = DEFAULT_MAX_MB,
+}: FileUploadProps) {
   const [title, setTitle] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isDragOver, setIsDragOver] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
 
-  const handleDragOver = (e: DragEvent) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const timerRef = useRef<number | null>(null);
+
+  // --- helpers ---
+  const startFakeProgress = () => {
+    setUploadProgress(0);
+    timerRef.current = window.setInterval(() => {
+      setUploadProgress((p) => {
+        if (p === null) return 0;
+        if (p >= 90) return 90; // tahan di 90% sampai selesai
+        const inc = p < 30 ? 8 : p < 60 ? 5 : 3;
+        return p + inc;
+      });
+      return;
+    }, 180);
+  };
+  const stopProgress = () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  };
+  const validateAndSet = (f: File | null | undefined) => {
+    if (!f) return;
+    const MAX_BYTES = (maxSizeMb || DEFAULT_MAX_MB) * 1024 * 1024;
+    if (f.size > MAX_BYTES) {
+      onUploadError?.(`Ukuran file melebihi ${maxSizeMb} MB (${bytesFmt(f.size)})`);
+      return;
+    }
+    setSelectedFile(f);
+  };
+
+  // --- events ---
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    validateAndSet(e.target.files?.[0]);
+  };
+  const handleDragOver: React.DragEventHandler<HTMLDivElement> = (e) => {
     e.preventDefault();
     setIsDragOver(true);
   };
-
-  const handleDragLeave = (e: DragEvent) => {
+  const handleDragLeave = () => setIsDragOver(false);
+  const handleDrop: React.DragEventHandler<HTMLDivElement> = (e) => {
     e.preventDefault();
     setIsDragOver(false);
-  };
-
-  const handleDrop = (e: DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-    
-    const files = Array.from(e.dataTransfer.files);
-    if (files.length > 0) {
-      setSelectedFile(files[0]);
-    }
-  };
-
-  const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      setSelectedFile(files[0]);
-    }
+    validateAndSet(e.dataTransfer.files?.[0]);
   };
 
   const handleUpload = async () => {
-    if (!selectedFile) return;
-
-    setIsUploading(true);
-    setUploadProgress({ loaded: 0, total: 0, percentage: 0 });
-    onUploadStart();
-
+    if (!selectedFile) {
+      onUploadError?.('Pilih file dulu ya.');
+      return;
+    }
     try {
-      await uploadFile(
-        selectedFile,
-        title || undefined,
-        (progress) => setUploadProgress(progress)
-      );
-      
-      // Reset form
+      onUploadStart?.();
+      setIsUploading(true);
+      startFakeProgress();
+
+      await uploadFile(selectedFile, title || undefined);
+
+      stopProgress();
+      setUploadProgress(100);
+      setTimeout(() => setUploadProgress(null), 700);
+
       setTitle('');
       setSelectedFile(null);
+
+      onUploadSuccess?.();
+    } catch (err: any) {
+      stopProgress();
       setUploadProgress(null);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-      
-      onUploadSuccess();
-    } catch (error) {
-      onUploadError(error instanceof Error ? error.message : 'Upload gagal');
+      onUploadError?.(err?.message || 'Upload gagal');
     } finally {
       setIsUploading(false);
     }
   };
 
+  useEffect(() => () => stopProgress(), []);
+
+  // --- UI persis seperti yang kamu kirim ---
   return (
     <div className="bg-journal-card border border-journal-border rounded-2xl p-6 shadow-xl">
       <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
         <Upload className="h-5 w-5 text-primary" />
         Upload File
       </h2>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div>
           <label htmlFor="title" className="block text-sm font-medium text-foreground mb-2">
@@ -95,7 +131,7 @@ export const FileUpload = ({ onUploadSuccess, onUploadError, onUploadStart }: Fi
             disabled={isUploading}
           />
         </div>
-        
+
         <div>
           <label htmlFor="file" className="block text-sm font-medium text-foreground mb-2">
             Pilih File
@@ -118,10 +154,7 @@ export const FileUpload = ({ onUploadSuccess, onUploadError, onUploadStart }: Fi
         onDrop={handleDrop}
         className={`
           rounded-2xl border-2 border-dashed p-6 text-center transition-all duration-200
-          ${isDragOver
-            ? 'border-primary bg-primary/5'
-            : 'border-journal-border hover:border-primary/50'
-          }
+          ${isDragOver ? 'border-primary bg-primary/5' : 'border-journal-border hover:border-primary/50'}
           ${isUploading ? 'opacity-50 pointer-events-none' : 'cursor-pointer'}
         `}
         onClick={() => fileInputRef.current?.click()}
@@ -131,23 +164,21 @@ export const FileUpload = ({ onUploadSuccess, onUploadError, onUploadStart }: Fi
           <p className="text-sm font-medium text-foreground">
             {selectedFile ? selectedFile.name : 'Drag & drop file atau klik untuk memilih'}
           </p>
-          <p className="text-xs text-muted-foreground">
-            PDF, Word, Excel, Gambar, ZIP dan lainnya
-          </p>
+          <p className="text-xs text-muted-foreground">PDF, Word, Excel, Gambar, ZIP dan lainnya</p>
         </div>
       </div>
 
       {/* Progress Bar */}
-      {uploadProgress && (
+      {uploadProgress !== null && (
         <div className="mt-4">
           <div className="flex justify-between text-sm text-muted-foreground mb-1">
             <span>Upload Progress</span>
-            <span>{uploadProgress.percentage}%</span>
+            <span>{uploadProgress}%</span>
           </div>
           <div className="w-full bg-journal-border rounded-full h-2">
             <div
               className="bg-primary h-2 rounded-full transition-all duration-300"
-              style={{ width: `${uploadProgress.percentage}%` }}
+              style={{ width: `${uploadProgress}%` }}
             />
           </div>
         </div>
@@ -173,4 +204,7 @@ export const FileUpload = ({ onUploadSuccess, onUploadError, onUploadStart }: Fi
       </button>
     </div>
   );
-};
+}
+
+export { FileUpload };
+export default FileUpload;

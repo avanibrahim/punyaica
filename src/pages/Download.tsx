@@ -1,10 +1,11 @@
+// src/pages/Download.tsx
 import { useState, useEffect } from 'react';
-import { FileItem, BASE_URL } from '@/lib/fileUtils';
 import { useToast } from '@/hooks/useToast';
 import { ToastContainer } from '@/components/Toast';
-import { FileList } from '@/components/FileList';
+import { SupabaseFileList as FileList } from '@/components/SupabaseFileList';
 import { Layout } from '@/components/Layout';
 import { Download as DownloadIcon, Sparkles, Info } from 'lucide-react';
+import { listFiles, removeFile, type FileItem } from '@/lib/supaFiles';
 
 const Download = () => {
   const [files, setFiles] = useState<FileItem[]>([]);
@@ -14,44 +15,33 @@ const Download = () => {
 
   const toast = useToast();
 
-  // Fetch all files from API
   const fetchFiles = async () => {
     setIsLoading(true);
     setError(null);
-    
     try {
-      const response = await fetch(`${BASE_URL}/api/files`);
-      if (!response.ok) {
-        throw new Error('Gagal memuat file');
-      }
-      
-      const data: FileItem[] = await response.json();
-      
-      // Sort by upload date (newest first)
-      const sortedFiles = data.sort((a, b) => 
-        new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime()
-      );
-      
-      setFiles(sortedFiles);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Terjadi kesalahan');
+      const data = await listFiles(); // sudah order terbaru di helper
+      setFiles(data);
+    } catch (e: any) {
+      setError(e?.message || 'Gagal memuat file');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Initial load
   useEffect(() => {
-    fetchFiles().finally(() => {
-      // Show skeleton for minimum 800ms for better UX
-      setTimeout(() => setShowSkeleton(false), 800);
-    });
+    fetchFiles().finally(() => setTimeout(() => setShowSkeleton(false), 800));
   }, []);
 
-  // Handle file deletion (optimistic update)
-  const handleFileDelete = (id: number) => {
-    setFiles(prev => prev.filter(file => file.id !== id));
-    toast.success('File berhasil dihapus');
+  const handleFileDelete = async (id: number) => {
+    const item = files.find(f => f.id === id);
+    if (!item) return;
+    try {
+      await removeFile(item);
+      setFiles(prev => prev.filter(f => f.id !== id)); // optimistic
+      toast.success('File berhasil dihapus');
+    } catch (e: any) {
+      toast.error(e?.message || 'Gagal menghapus file');
+    }
   };
 
   return (
@@ -64,13 +54,7 @@ const Download = () => {
             <h1 className="text-3xl md:text-4xl font-bold text-foreground">Kelola File</h1>
           </div>
           <p className="text-muted-foreground flex items-center justify-center gap-2">
-            <span>Download</span>
-            <Sparkles className="h-4 w-4" />
-            <span>Lihat</span>
-            <Sparkles className="h-4 w-4" />
-            <span>Hapus</span>
-            <Sparkles className="h-4 w-4" />
-            <span>Kelola Semua File</span>
+            <span>Download Jurnal yang anda butuhkan hanya sekali klik.</span>
           </p>
         </header>
 
@@ -82,26 +66,26 @@ const Download = () => {
               <h2 className="text-lg font-bold text-foreground">Kelola File Jurnal</h2>
             </div>
             <p className="text-muted-foreground mb-4">
-              Halaman ini menampilkan semua file yang telah diupload. Anda dapat mendownload, melihat preview, 
+              Halaman ini menampilkan semua file yang telah diupload. Anda dapat mendownload, melihat preview,
               atau menghapus file sesuai kebutuhan.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-              <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                <span className="text-blue-700"><strong>Download:</strong> Unduh file ke perangkat</span>
+              <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                <div className="w-3 h-3 bg-green-500 rounded-full" />
+                <span className="text-green-700"><strong>Download:</strong> Unduh file ke perangkat</span>
               </div>
               <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg border border-green-200">
-                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                <div className="w-3 h-3 bg-green-500 rounded-full" />
                 <span className="text-green-700"><strong>Lihat:</strong> Preview file di tab baru</span>
               </div>
-              <div className="flex items-center gap-3 p-3 bg-red-50 rounded-lg border border-red-200">
-                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                <span className="text-red-700"><strong>Hapus:</strong> Hapus file permanent</span>
+              <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                <div className="w-3 h-3 bg-green-500 rounded-full" />
+                <span className="text-green-700"><strong>Hapus:</strong> Hapus file permanent</span>
               </div>
             </div>
           </div>
 
-          {/* File List */}
+          {/* File List (Supabase) */}
           <FileList
             files={files}
             isLoading={isLoading}

@@ -39,8 +39,8 @@ const EmptyState = () => (
     <div className="w-24 h-24 bg-journal-border rounded-full flex items-center justify-center mx-auto mb-4">
       <Download className="h-12 w-12 text-muted-foreground" />
     </div>
-    <h3 className="text-lg font-medium text-foreground mb-2">Belum ada file diupload</h3>
-    <p className="text-muted-foreground">Upload file pertama Anda untuk memulai ✨</p>
+    <h3 className="text-lg font-medium text-foreground mb-2">Belum ada Jurnal diupload</h3>
+    <p className="text-muted-foreground">Upload Jurnal pertama Anda untuk memulai </p>
   </div>
 );
 
