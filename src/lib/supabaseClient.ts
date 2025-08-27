@@ -1,11 +1,16 @@
-// src/lib/supabase.ts
-import { createClient } from '@supabase/supabase-js';
+// src/lib/supabaseClient.ts
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-const url = import.meta.env.VITE_SUPABASE_URL;
-const anon = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const url  = import.meta.env.VITE_SUPABASE_URL?.trim();
+const anon = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
 
-// Guard biar error-nya jelas saat build/test
-if (!url) throw new Error('VITE_SUPABASE_URL tidak ter-set');
-if (!anon) throw new Error('VITE_SUPABASE_ANON_KEY tidak ter-set');
+export const supabase: SupabaseClient | null =
+  url && anon ? createClient(url, anon) : null;
 
-export const supabase = createClient(url, anon);
+// optional: helper
+export const ensureSupabase = () => {
+  if (!supabase) {
+    throw new Error('Konfigurasi Supabase tidak lengkap. Set VITE_SUPABASE_URL & VITE_SUPABASE_ANON_KEY di Vercel.');
+  }
+  return supabase;
+};
