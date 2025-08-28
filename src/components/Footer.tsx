@@ -4,13 +4,13 @@ export const Footer = () => {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="bg-gradient-secondary border-t border-journal-border mt-16">
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <footer className="bg-white border-t border-journal-border mt-16">
+    <div className="max-w-7xl mx-auto px-6 sm:px-6 lg:px-8 py-12">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {/* Brand */}
         <div className="space-y-4">
           <div className="flex items-center gap-2">
-            <div className="p-2 bg-slate-50 rounded-lg shadow-lg">
+            <div className="p-2">
             <img
             src="logo.png"
             alt="Logo e‑Journal"
@@ -63,15 +63,6 @@ export const Footer = () => {
               <Mail className="h-4 w-4 group-hover:scale-110 transition-transform" />
               sekretariat@hmi.or.id
             </a>
-            <a
-              href="https://github.com/jurnalmanager"
-              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors group"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Github className="h-4 w-4 group-hover:scale-110 transition-transform" />
-              Repositori E-Journal HMI
-            </a>
           </div>
         </div>
       </div>
@@ -80,7 +71,7 @@ export const Footer = () => {
       <div className="mt-8 pt-8 border-t border-journal-border">
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
           <p className="text-sm text-muted-foreground">
-            © {currentYear} Himpunan Mahasiswa Islam — E-Journal.
+            © {currentYear} Himpunan Mahasiswa Islam - E-Journal.
           </p>
         </div>
       </div>

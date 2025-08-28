@@ -4,14 +4,15 @@ import { debounce } from '@/lib/fileUtils';
 import { useToast } from '@/hooks/useToast';
 import { ToastContainer } from '@/components/Toast';
 import { SearchAndFilter } from '@/components/SearchAndFilter';
-import { Layout } from '@/components/Layout';
+import  Layout  from '@/components/Layout';
 import {
   listFiles,
   removeFile,
   type FileItem
 } from '@/lib/supaFiles';
 import { SupabaseFileList as FileList } from '@/components/SupabaseFileList';
-import { BookOpen, FileText, Search, ShieldCheck, UploadCloud, List as ListIcon } from "lucide-react";
+import { UploadCloud, List, CheckCircle2, Shield, CloudUpload, FileDown } from "lucide-react";
+import { BookOpen, FileText, Gauge, Cpu } from "lucide-react";
 
 export default function JournalList() {
   const [files, setFiles] = useState<FileItem[]>([]);
@@ -26,7 +27,7 @@ export default function JournalList() {
   const selectedType = searchParams.get('type') || '';
 
   const toast = useToast();
-
+  
   // === Scroll-in animation super simple (tanpa framer-motion) ===
   useEffect(() => {
     const els = document.querySelectorAll<HTMLElement>('.reveal');
@@ -38,7 +39,7 @@ export default function JournalList() {
         'duration-500',
         'will-change-transform'
       );
-    });
+});
     const io = new IntersectionObserver(
       (entries) => {
         entries.forEach(({ isIntersecting, target }) => {
@@ -104,6 +105,14 @@ export default function JournalList() {
     }
   };
 
+   const stats = [
+    { label: "E‑Jurnal Terintegrasi", icon: BookOpen },
+    { label: "Manajemen Artikel (OJS)", icon: FileText },
+    { label: "Upload Jurnal", icon: CloudUpload },
+    { label: "Download Jurnal", icon: FileDown },
+    ];
+    
+
   // pagination di sisi klien
   const paginated = useMemo(
     () => files.slice(0, currentPage * itemsPerPage),
@@ -115,70 +124,110 @@ export default function JournalList() {
 <Layout>
 <div className="pb-0">
   {/* HERO */}
-  <section className="relative min-h-[70vh] pt-6 sm:pt-8 flex items-center justify-center md:justify-start overflow-hidden nature-pattern">
-    <div className="absolute inset-0 bg-gradient-to-br from-green-200 to-green-50" />
+  <section className="relative overflow-hidden pt-4 pb-8 sm:pt-12 sm:pb-20 md:pt-16 md:pb-24">
+      {/* Background layers */}
+      <div className="absolute inset-0 -z-10">
+        <div className="absolute inset-0 bg-gradient-to-br from-emerald-100 via-green-50 to-white" />
+        {/* glow */}
+        <div className="absolute -top-24 -right-16 h-72 w-72 rounded-full bg-emerald-400/25 blur-3xl" aria-hidden />
+        <div className="absolute -bottom-24 -left-16 h-72 w-72 rounded-full bg-emerald-300/20 blur-3xl" aria-hidden />
+        {/* subtle grid */}
+        <svg aria-hidden className="absolute inset-0 h-full w-full opacity-30 [mask-image:radial-gradient(ellipse_at_center,white,transparent_70%)]">
+          <defs>
+            <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(16,185,129,0.15)" strokeWidth="1" />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#grid)" />
+        </svg>
+      </div>
 
-    <div className="relative z-10 w-full">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Grid: foto di kanan pada md+, tetap center di mobile */}
-        <div className="grid items-center gap-6 md:gap-10 md:grid-cols-[1fr,auto] text-center md:text-left">
-          {/* FOTO/LOGO — lebih kecil di mobile, besar di desktop */}
+      <div className="relative z-10 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="grid items-center gap-8 md:gap-12 md:grid-cols-2">
+          {/* TEXT & CTA */}
+          <div className="order-2 md:order-1 text-center md:text-left space-y-10 md:space-y-7">
+            {/* Badge HMI */}
+            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-700 bg-white/70 px-3 py-1 text-emerald-700 shadow-sm backdrop-blur">
+              <span className="text-xs font-semibold tracking-wide">HMI Gorontalo</span>
+            </div>
+
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold leading-[1.15] text-emerald-900">
+              Manajemen <span className="whitespace-nowrap">Jurnal Ilmiah</span>
+              <span className="block mt-2 md:mt-3 bg-gradient-to-r from-emerald-700 via-emerald-700 to-green-700 bg-clip-text text-transparent">
+                Kader HMI
+              </span>
+            </h1>
+
+            <p className="mx-auto md:mx-0 max-w-2xl text-emerald-700 text-sm sm:text-base md:text-lg leading-relaxed">
+              Kelola, cari, filter, dan publikasikan jurnal dengan mudah. Semua berkas terpusat,
+              terstruktur, dan cepat ditemukan untuk kebutuhan riset kader & komisariat.
+            </p>
+
+            {/* CTA */}
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-row sm:items-center md:items-start sm:justify-start sm:gap-4 pb-6">
+              <a
+                href="/upload"
+                className="group inline-flex w-full justify-center sm:w-auto sm:justify-start items-center gap-2 rounded-xl px-5 py-3 md:px-7 md:py-3.5 text-sm md:text-base font-semibold text-white shadow-xl transition-all duration-300 gradient-bg hover:shadow-2xl"
+              >
+                Upload
+              </a>
+
+              <a
+                href="#list"
+                className="inline-flex w-full justify-center sm:w-auto sm:justify-start items-center gap-2 rounded-xl border-2 border-emerald-500 px-5 py-3 md:px-7 md:py-3.5 text-sm md:text-base font-semibold text-emerald-700 hover:bg-emerald-50"
+              >
+                Daftar
+              </a>
+            </div>
+
+            {/* Feature bullets */}
+            <ul className="mt-2 grid grid-cols-3 sm:grid-cols-3 gap-2 text-xs sm:text-sm text-emerald-700">
+              <li className="inline-flex items-center gap-2 justify-center md:justify-start"><CheckCircle2 className="h-4 w-4 text-emerald-600" /> Pencarian Cepat</li>
+              <li className="inline-flex items-center gap-2 justify-center md:justify-start"><CheckCircle2 className="h-4 w-4 text-emerald-600" /> Tag & Filter</li>
+              <li className="inline-flex items-center gap-2 justify-center md:justify-start"><CheckCircle2 className="h-4 w-4 text-emerald-600" /> Publikasi Ringkas</li>
+            </ul>
+          </div>
+
+          {/* IMAGE / LOGO */}
           <div className="order-1 md:order-2 flex justify-center md:justify-end">
             <div className="relative w-36 h-36 sm:w-44 sm:h-44 md:w-72 md:h-72 lg:w-96 lg:h-96 rounded-2xl overflow-hidden">
               <img
                 src="/hmi.png"
-                alt="Logo / Foto E-Journal"
-                className="w-full h-full object-cover"
+                alt="Logo HMI / E‑Journal"
+                className="h-full w-full object-contain p-3 md:p-6"
                 loading="eager"
                 decoding="async"
               />
-              <span
-                className="pointer-events-none absolute -z-10 inset-0 rounded-2xl"
-                style={{ boxShadow: '0 0 120px 20px rgba(34,197,94,.28)' }}
-              />
-            </div>
-          </div>
-
-          {/* TEKS + CTA — di kiri pada md+, tetap center di mobile */}
-          <div className="order-2 md:order-1 space-y-6 md:space-y-8 animate-fade-up">
-            <h1 className="text-2xl sm:text-3xl md:text-5xl font-bold text-gray-800 leading-snug md:leading-tight">
-              Manajemen
-              <span className="block mt-2 md:mt-4 bg-gradient-to-r from-green-500 to-green-600 bg-clip-text text-transparent rounded-md">
-                E-Journal
-              </span>
-            </h1>
-
-            <p className="text-sm md:text-lg text-gray-700 max-w-3xl mx-auto md:mx-0 leading-snug md:leading-relaxed">
-              Kelola, cari, filter, dan publikasikan jurnal dengan mudah. Semua berkas terpusat dan cepat ditemukan.
-            </p>
-
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center md:justify-start items-center md:items-start">
-              <a href="/upload">
-                <button className="gradient-bg text-white px-5 py-3 md:px-8 md:py-4 text-sm md:text-lg font-semibold rounded-xl shadow-xl hover:shadow-2xl transition-all duration-300 inline-flex items-center gap-2 group">
-                  Unggah Jurnal
-                  <UploadCloud className="h-5 w-5 group-hover:translate-x-0.5 transition-transform" />
-                </button>
-              </a>
-              <a href="#list">
-                <button className="px-5 py-3 md:px-8 md:py-4 text-sm md:text-lg font-semibold rounded-xl border-2 border-green-500 text-green-700 hover:bg-green-50 inline-flex items-center gap-2">
-                  Lihat Daftar
-                  <ListIcon className="h-5 w-5" />
-                </button>
-              </a>
             </div>
           </div>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
+    
+          <section className="py-8 sm:py-10 bg-transparent border-t border-b border-emerald-100">
+              <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
+                  {stats.map(({ label, icon: Icon }, index) => (
+                    <div key={index} className="text-center text-2xl md:text">
+                    <div className="mb-1 md:mb-2">
+                      {Icon && <Icon className="h-6 w-6 sm:h-7 sm:w-7 md:h-12 md:w-12 mx-auto" />}
+                      </div>
+                      <div className="text-emerald-900 text-xs sm:text-sm md:text-lg font-medium">{label}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+          </section>
 
-  {/* HEADER LIST */}
-  <header id="list" className="text-center py-8 md:py-10">
-    <h2 className="text-2xl md:text-4xl font-bold text-gray-900">Daftar Jurnal</h2>
-    <p className="mt-2 text-sm md:text-base text-gray-600">
-      Daftar, cari, filter, dan unggah jurnal terbaru — semua dalam satu tempat.
-    </p>
-  </header>
+      {/* HEADER LIST */}
+      <header id="list" className="text-center py-8 md:py-10">
+        <h2 className="text-2xl md:text-4xl font-bold text-emerald-900">Daftar Jurnal</h2>
+        <p className="mt-2 text-sm md:text-base text-emerald-600">
+          Daftar, cari, filter, dan unggah jurnal terbaru — semua dalam satu tempat.
+        </p>
+      </header>
+
+  
 
   {/* FILTER BAR */}
   <section className="z-20 px-4">
@@ -194,16 +243,16 @@ export default function JournalList() {
 
   {/* LIST */}
   <section className="px-4 mt-6">
-    <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+    <div className="rounded-2xl border border-emerald-200 bg-white shadow-sm">
       <div className="p-3 md:p-4">
-        <FileList
-          files={paginated}
-          isLoading={isLoading}
-          error={error}
-          onRefresh={fetchFiles}
-          onDelete={handleFileDelete}
-          showSkeleton={showSkeleton}
-        />
+      <FileList
+        variant="home"
+        files={paginated}
+        isLoading={isLoading}
+        error={error}
+        onRefresh={fetchFiles}
+        showSkeleton={showSkeleton}
+      />
       </div>
     </div>
 

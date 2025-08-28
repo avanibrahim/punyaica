@@ -164,7 +164,7 @@ function FileUpload({
           <p className="text-sm font-medium text-foreground">
             {selectedFile ? selectedFile.name : 'Drag & drop file atau klik untuk memilih'}
           </p>
-          <p className="text-xs text-muted-foreground">PDF, Word, Excel, Gambar, ZIP dan lainnya</p>
+          <p className="text-xs text-muted-foreground">PDF, Word, ZIP dan lainnya</p>
         </div>
       </div>
 

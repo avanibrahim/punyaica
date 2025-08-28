@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Upload as UploadIcon, Sparkles, Lightbulb } from 'lucide-react';
 
-import { Layout } from '@/components/Layout';
+import  Layout  from '@/components/Layout';
 import { useToast } from '@/hooks/useToast';
 import { ToastContainer } from '@/components/Toast';
 import  FileUpload  from '@/components/FileUpload';
@@ -68,12 +68,11 @@ const handleUploadError = (msg: string) => { toast.error(`Upload gagal: ${msg}`)
 
   return (
     <Layout>
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Header */}
         <header className="text-center mb-8">
           <div className="flex items-center justify-center gap-3 mb-2">
-            <UploadIcon className="h-8 w-8 text-primary" />
-            <h1 className="text-3xl md:text-4xl font-bold text-foreground">Upload File</h1>
+            <h1 className="text-3xl md:text-4xl font-bold text-foreground">Unggah Jurnal Anda</h1>
           </div>
           <p className="text-muted-foreground flex items-center justify-center gap-2">
             <span>Drag & Drop | Progress Bar | Upload Mudah</span>
@@ -113,11 +112,11 @@ const handleUploadError = (msg: string) => { toast.error(`Upload gagal: ${msg}`)
               <ul className="space-y-3 text-sm text-muted-foreground">
                 <li className="flex items-start gap-2">
                   <span className="text-primary font-bold">•</span>
-                  <span>Mendukung berbagai format: PDF, Word, Excel, Gambar, ZIP, dll</span>
+                  <span>Mendukung berbagai format: PDF, Word, ZIP, dll</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-primary font-bold">•</span>
-                  <span>Setelah upload berhasil, Anda akan diarahkan ke daftar jurnal</span>
+                  <span>Upload berhasil, Otomatis diarahkan ke daftar jurnal</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-primary font-bold">•</span>
