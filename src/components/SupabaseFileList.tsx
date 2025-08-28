@@ -248,12 +248,24 @@ export function SupabaseFileList({
   return (
     <div className="space-y-3 sm:space-y-4">
       {/* Toolbar — sticky di mobile (dipangkas biar fokus ke download) */}
-      <div className="flex items-center justify-end">
+      <div className="flex items-center justify-between">
+        <button
+          onClick={onRefresh}
+          className="inline-flex h-11 items-center gap-2 rounded-xl border px-3 text-[14px] sm:text-sm hover:bg-accent hover:text-accent-foreground disabled:opacity-60"
+          aria-label="Refresh"
+          disabled={!!isLoading}
+          type="button"
+        >
+          <RefreshCcw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+          <span className="hidden sm:inline">{isLoading ? 'Muat ulang…' : 'Refresh'}</span>
+        </button>
+
         <div className="inline-flex rounded-xl border p-1">
           <button
             onClick={() => setView('grid')}
             className={`inline-flex h-11 items-center gap-2 rounded-lg px-3 text-[14px] sm:text-sm ${view === 'grid' ? 'bg-accent text-accent-foreground' : ''}`}
             title="Grid"
+            type="button"
           >
             <LayoutGrid className="h-4 w-4" />
             <span className="hidden sm:inline">Grid</span>
@@ -262,6 +274,7 @@ export function SupabaseFileList({
             onClick={() => setView('list')}
             className={`inline-flex h-11 items-center gap-2 rounded-lg px-3 text-[14px] sm:text-sm ${view === 'list' ? 'bg-accent text-accent-foreground' : ''}`}
             title="List"
+            type="button"
           >
             <List className="h-4 w-4" />
             <span className="hidden sm:inline">List</span>

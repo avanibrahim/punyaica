@@ -1,15 +1,73 @@
 // src/pages/Upload.tsx
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Upload as UploadIcon, Sparkles, Lightbulb } from 'lucide-react';
+import { motion, useAnimation, useInView } from 'framer-motion';
 
-import  Layout  from '@/components/Layout';
+import Layout from '@/components/Layout';
 import { useToast } from '@/hooks/useToast';
 import { ToastContainer } from '@/components/Toast';
-import  FileUpload  from '@/components/FileUpload';
+import FileUpload from '@/components/FileUpload';
 
 // ⬇️ helper Supabase yang sudah kita buat sebelumnya
 import { uploadFile } from '@/lib/supaFiles';
+
+// ------- Animations helpers (smooth scroll down & up) -------
+const fadeUp = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0 },
+};
+
+const fadeUpSm = {
+  hidden: { opacity: 0, y: 10 },
+  visible: { opacity: 1, y: 0 },
+};
+
+const stagger = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.08 } },
+};
+
+/**
+ * Wrapper untuk membuat elemen beranimasi saat masuk/keluar viewport
+ * - Tidak mengubah UI (hanya opacity & translateY)
+ * - Animasi ulang saat scroll ke bawah atau ke atas (useInView + controls)
+ */
+function AnimateOnView({
+  children,
+  className,
+  variants = fadeUp,
+  amount = 0.25,
+  delay = 0,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  variants?: any;
+  amount?: number; // seberapa besar elemen harus terlihat untuk trigger
+  delay?: number;
+}) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const controls = useAnimation();
+  const inView = useInView(ref, { amount });
+
+  useEffect(() => {
+    if (inView) controls.start('visible');
+    else controls.start('hidden');
+  }, [inView, controls]);
+
+  return (
+    <motion.div
+      ref={ref}
+      initial="hidden"
+      animate={controls}
+      variants={variants}
+      transition={{ type: 'spring', stiffness: 120, damping: 20, mass: 0.6, delay }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
+}
 
 export default function Upload() {
   const toast = useToast();
@@ -33,13 +91,16 @@ export default function Upload() {
     onFilePick(f);
   };
 
-  const handleUploadStart = () => { toast.info('Memulai upload...'); };
-const handleUploadSuccess = () => {
-  toast.success('Upload berhasil');
-  setTimeout(() => navigate('/'), 1500);
-};
-const handleUploadError = (msg: string) => { toast.error(`Upload gagal: ${msg}`); };
-
+  const handleUploadStart = () => {
+    toast.info('Memulai upload...');
+  };
+  const handleUploadSuccess = () => {
+    toast.success('Upload berhasil');
+    setTimeout(() => navigate('/'), 1500);
+  };
+  const handleUploadError = (msg: string) => {
+    toast.error(`Upload gagal: ${msg}`);
+  };
 
   const onSubmit: React.FormEventHandler = async e => {
     e.preventDefault();
@@ -68,65 +129,80 @@ const handleUploadError = (msg: string) => { toast.error(`Upload gagal: ${msg}`)
 
   return (
     <Layout>
-      <div className="max-w-6xl mx-auto px-4 py-8">
+      {/* Page container with subtle entrance */}
+      <AnimateOnView className="max-w-6xl mx-auto px-4 py-8" variants={stagger}>
         {/* Header */}
-        <header className="text-center mb-8">
-          <div className="flex items-center justify-center gap-3 mb-2">
-            <h1 className="text-3xl md:text-4xl font-bold text-foreground">Unggah Jurnal Anda</h1>
-          </div>
-          <p className="text-muted-foreground flex items-center justify-center gap-2">
+        <AnimateOnView className="text-center mb-8" variants={stagger}>
+          <motion.div className="flex items-center justify-center gap-3 mb-2" variants={fadeUp}>
+            <motion.h1
+              className="text-3xl md:text-4xl font-bold text-foreground"
+              variants={fadeUp}
+            >
+              Unggah Jurnal Anda
+            </motion.h1>
+          </motion.div>
+          <motion.p
+            className="text-muted-foreground flex items-center justify-center gap-2"
+            variants={fadeUpSm}
+          >
             <span>Drag & Drop | Progress Bar | Upload Mudah</span>
-          </p>
-        </header>
-        
+          </motion.p>
+        </AnimateOnView>
+
         <div className="space-y-6">
           {/* Upload Section */}
-          <FileUpload
-            onUploadStart={handleUploadStart}
-            onUploadSuccess={handleUploadSuccess}
-            onUploadError={handleUploadError}
-          />
-
+          <AnimateOnView variants={fadeUp}>
+            <FileUpload
+              onUploadStart={handleUploadStart}
+              onUploadSuccess={handleUploadSuccess}
+              onUploadError={handleUploadError}
+            />
+          </AnimateOnView>
 
           {/* Help Section */}
-          <div className="bg-gradient-accent border border-journal-border rounded-2xl p-6 shadow-xl">
-            <div className="flex items-center gap-2 mb-4">
+          <AnimateOnView
+            className="bg-gradient-accent border border-journal-border rounded-2xl p-6 shadow-xl"
+            variants={stagger}
+          >
+            <motion.div className="flex items-center gap-2 mb-4" variants={fadeUpSm}>
               <Lightbulb className="h-5 w-5 text-primary" />
               <h2 className="text-lg font-bold text-foreground">Tips Upload</h2>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <ul className="space-y-3 text-sm text-muted-foreground">
-                <li className="flex items-start gap-2">
+            </motion.div>
+
+            <motion.div className="grid grid-cols-1 md:grid-cols-2 gap-4" variants={stagger}>
+              <motion.ul className="space-y-3 text-sm text-muted-foreground" variants={stagger}>
+                <motion.li className="flex items-start gap-2" variants={fadeUpSm}>
                   <span className="text-primary font-bold">•</span>
                   <span>Drag & drop file langsung ke area upload untuk kemudahan</span>
-                </li>
-                <li className="flex items-start gap-2">
+                </motion.li>
+                <motion.li className="flex items-start gap-2" variants={fadeUpSm}>
                   <span className="text-primary font-bold">•</span>
                   <span>Judul opsional akan membantu pencarian file nantinya</span>
-                </li>
-                <li className="flex items-start gap-2">
+                </motion.li>
+                <motion.li className="flex items-start gap-2" variants={fadeUpSm}>
                   <span className="text-primary font-bold">•</span>
                   <span>Progress upload akan ditampilkan secara real-time</span>
-                </li>
-              </ul>
-              <ul className="space-y-3 text-sm text-muted-foreground">
-                <li className="flex items-start gap-2">
+                </motion.li>
+              </motion.ul>
+
+              <motion.ul className="space-y-3 text-sm text-muted-foreground" variants={stagger}>
+                <motion.li className="flex items-start gap-2" variants={fadeUpSm}>
                   <span className="text-primary font-bold">•</span>
                   <span>Mendukung berbagai format: PDF, Word, ZIP, dll</span>
-                </li>
-                <li className="flex items-start gap-2">
+                </motion.li>
+                <motion.li className="flex items-start gap-2" variants={fadeUpSm}>
                   <span className="text-primary font-bold">•</span>
                   <span>Upload berhasil, Otomatis diarahkan ke daftar jurnal</span>
-                </li>
-                <li className="flex items-start gap-2">
+                </motion.li>
+                <motion.li className="flex items-start gap-2" variants={fadeUpSm}>
                   <span className="text-primary font-bold">•</span>
                   <span>File akan otomatis tersimpan dan bisa dicari dengan mudah</span>
-                </li>
-              </ul>
-            </div>
-          </div>
+                </motion.li>
+              </motion.ul>
+            </motion.div>
+          </AnimateOnView>
         </div>
-      </div>
+      </AnimateOnView>
 
       {/* Toast Container */}
       <ToastContainer toasts={toast.toasts} onRemove={toast.removeToast} />
