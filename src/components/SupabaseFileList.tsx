@@ -3,7 +3,7 @@ import type { FileItem } from '@/lib/supaFiles';
 import { publicUrl, signedUrl } from '@/lib/supaFiles';
 import {
   FileText, Image as ImageIcon, Download, Eye, Trash2,
-  RefreshCcw, LayoutGrid, List, Search, Filter
+  RefreshCcw, LayoutGrid, List
 } from 'lucide-react';
 
 // ================================================================
@@ -20,11 +20,17 @@ const PDF_THUMB_QUERY = '?thumb=1&page=1&width=800';
 const THUMB_TOP_PARAM = '&position=top'; // hapus kalau service-mu gak butuh
 
 function isImagePath(path: string) {
-  return /\.(png|jpe?g|webp|gif|bmp|avif)$/i.test(path);
+  return /(\.(png|jpe?g|webp|gif|bmp|avif))$/i.test(path.split('?')[0] || '');
 }
 function ext(path: string) {
-  const m = path.match(/\.([a-z0-9]+)(?:\?|#|$)/i);
+  const clean = (path || '').split('?')[0];
+  const m = clean.match(/\.([a-z0-9]+)$/i);
   return m ? m[1].toLowerCase() : '';
+}
+function baseName(path: string) {
+  const clean = (path || '').split('?')[0];
+  const parts = clean.split('/')
+  return parts[parts.length - 1] || 'file';
 }
 function formatWITA(date: Date) {
   return date.toLocaleString('id-ID', {
@@ -49,6 +55,35 @@ function guessThumbUrl(f: FileItem) {
   if (isImagePath(f.storage_path)) return publicUrl(f.storage_path);
   if (ext(f.storage_path) === 'pdf') return publicUrl(f.storage_path) + PDF_THUMB_QUERY + THUMB_TOP_PARAM;
   return null;
+}
+
+// ====== Download helpers (paksa unduh, anti-preview) ======
+function withDownloadParam(url: string, filename: string) {
+  try {
+    const u = new URL(url);
+    if (!u.searchParams.has('download')) u.searchParams.set('download', filename);
+    return u.toString();
+  } catch {
+    return url + (url.includes('?') ? '&' : '?') + 'download=' + encodeURIComponent(filename);
+  }
+}
+
+function saveBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename || 'download';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+async function downloadViaBlob(url: string, filename: string) {
+  const res = await fetch(url, { method: 'GET', credentials: 'omit', cache: 'no-store', mode: 'cors' });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const blob = await res.blob();
+  saveBlob(blob, filename);
 }
 
 // ================================================================
@@ -88,6 +123,7 @@ export function SupabaseFileList({
 
   const [q, setQ] = useState('');
   const [type, setType] = useState<TypeFilter>('all');
+  const [downloadingId, setDownloadingId] = useState<number | null>(null);
 
   const showViewBtn = true;
   const showDownloadBtn = variant === 'download' || variant === 'manage';
@@ -99,7 +135,7 @@ export function SupabaseFileList({
     ),
     [files]
   );
-  const newestId = sorted[0]?.id;
+  const newestId = sorted[0]?.id as any;
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -119,6 +155,39 @@ export function SupabaseFileList({
     });
   }, [sorted, q, type]);
 
+  // ====== Download handler (konfirmasi + paksa unduh) ======
+  const getFilename = (f: FileItem) =>
+    ((f as any).title?.trim?.() || (f as any).original_name || baseName(f.storage_path));
+
+  const handleDownload = async (f: FileItem) => {
+    const filename = getFilename(f);
+    const ok = window.confirm(`Download \"${filename}\" ke perangkat?`);
+    if (!ok) return;
+
+    setDownloadingId(f.id as any);
+    try {
+      // Selalu coba signedUrl, lalu paksa "download" via query param supaya attachment
+      const url = await signedUrl((f as any).storage_path, 60);
+      if (url) {
+        const forced = withDownloadParam(url, filename);
+        await downloadViaBlob(forced, filename);
+        return;
+      }
+      // Fallback: public URL (kalau bucket public)
+      const pub = publicUrl((f as any).storage_path);
+      const forcedPub = withDownloadParam(pub, filename);
+      await downloadViaBlob(forcedPub, filename);
+    } catch (e) {
+      console.error('Download gagal:', e);
+      // fallback terakhir: buka public URL di tab baru (barangkali di-handle browser)
+      const pub = publicUrl((f as any).storage_path);
+      const forced = withDownloadParam(pub, filename);
+      window.location.href = forced;
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
   // ============================ STATES ============================
   if (error) {
     return (
@@ -126,7 +195,7 @@ export function SupabaseFileList({
         <div className="truncate">{error}</div>
         <button
           onClick={onRefresh}
-          className="inline-flex h-10 items-center gap-2 rounded-lg border border-rose-500/30 px-3 text-sm hover:bg-rose-500/10"
+          className="inline-flex h-10 items-center gap-2 rounded-lg border px-3 text-sm hover:bg-rose-500/10"
         >
           <RefreshCcw className="h-4 w-4" />
           <span className="hidden sm:inline">Coba lagi</span>
@@ -178,47 +247,30 @@ export function SupabaseFileList({
   // ============================== UI ==============================
   return (
     <div className="space-y-3 sm:space-y-4">
-      {/* Toolbar — sticky di mobile */}
-    
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          {/* kiri: search + filter (search full-width di mobile) */}
-        
-
-          {/* kanan: refresh + view toggle */}
-          <div className="flex items-center gap-2 self-end sm:self-auto">
-            <button
-              onClick={onRefresh}
-              className="inline-flex h-11 items-center gap-2 rounded-xl border px-3 text-[14px] sm:text-sm hover:bg-accent hover:text-accent-foreground"
-            >
-              <RefreshCcw className="h-4 w-4" />
-              <span className="hidden sm:inline">Refresh</span>
-            </button>
-
-            <div className="inline-flex rounded-xl border p-1">
-              <button
-                onClick={() => setView('grid')}
-                className={`inline-flex h-11 items-center gap-2 rounded-lg px-3 text-[14px] sm:text-sm ${view === 'grid' ? 'bg-accent text-accent-foreground' : ''}`}
-                title="Grid"
-              >
-                <LayoutGrid className="h-4 w-4" />
-                <span className="hidden sm:inline">Grid</span>
-              </button>
-              <button
-                onClick={() => setView('list')}
-                className={`inline-flex h-11 items-center gap-2 rounded-lg px-3 text-[14px] sm:text-sm ${view === 'list' ? 'bg-accent text-accent-foreground' : ''}`}
-                title="List"
-              >
-                <List className="h-4 w-4" />
-                <span className="hidden sm:inline">List</span>
-              </button>
-            </div>
-          </div>
+      {/* Toolbar — sticky di mobile (dipangkas biar fokus ke download) */}
+      <div className="flex items-center justify-end">
+        <div className="inline-flex rounded-xl border p-1">
+          <button
+            onClick={() => setView('grid')}
+            className={`inline-flex h-11 items-center gap-2 rounded-lg px-3 text-[14px] sm:text-sm ${view === 'grid' ? 'bg-accent text-accent-foreground' : ''}`}
+            title="Grid"
+          >
+            <LayoutGrid className="h-4 w-4" />
+            <span className="hidden sm:inline">Grid</span>
+          </button>
+          <button
+            onClick={() => setView('list')}
+            className={`inline-flex h-11 items-center gap-2 rounded-lg px-3 text-[14px] sm:text-sm ${view === 'list' ? 'bg-accent text-accent-foreground' : ''}`}
+            title="List"
+          >
+            <List className="h-4 w-4" />
+            <span className="hidden sm:inline">List</span>
+          </button>
         </div>
-
+      </div>
 
       {/* CONTENT */}
       {view === 'grid' ? (
-        // ===================== GRID (1 kolom di mobile) =====================
         <div className="grid grid-cols-1 gap-3 sm:gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           {filtered.map((f) => {
             const title = (f as any).title?.trim?.() || (f as any).original_name || '';
@@ -228,13 +280,13 @@ export function SupabaseFileList({
             const thumb = guessThumbUrl(f);
             const newest = f.id === newestId;
             const fileExt = (ext((f as any).storage_path) || 'file').toUpperCase();
+            const isDownloading = downloadingId === (f.id as any);
 
             return (
               <div
                 key={f.id as any}
                 className={`group relative overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm transition hover:shadow-md sm:rounded-2xl ${newest ? 'ring-2 ring-emerald-500/80' : ''}`}
               >
-                {/* Media TOP-CROP — tinggi beda mobile/desktop */}
                 <div className="relative">
                   {thumb ? (
                     <img
@@ -252,8 +304,6 @@ export function SupabaseFileList({
                       }
                     </div>
                   )}
-
-                  {/* badges tetap di atas, gak nutup header dokumen */}
                   <div className="absolute left-3 top-3 flex items-center gap-2">
                     {newest && (
                       <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-700 ring-1 ring-emerald-200 sm:text-xs">
@@ -264,12 +314,9 @@ export function SupabaseFileList({
                       {fileExt}
                     </span>
                   </div>
-
-                  {/* overlay actions di bawah */}
                   <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/40 via-black/0 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
                 </div>
 
-                {/* Body */}
                 <div className="p-3 sm:p-4">
                   <div className="mb-1 line-clamp-2 text-[14px] font-semibold sm:text-sm">{title}</div>
                   <div className="text-[12px] text-muted-foreground sm:text-xs">{(f as any).original_name}</div>
@@ -282,7 +329,6 @@ export function SupabaseFileList({
                     <span className="uppercase tracking-wide">WITA</span>
                   </div>
 
-                  {/* Actions — icon-only di mobile, teks muncul ≥sm */}
                   <div className="mt-3 flex items-center gap-2 sm:mt-4">
                     {showViewBtn && (
                       <a
@@ -298,15 +344,18 @@ export function SupabaseFileList({
                     )}
                     {showDownloadBtn && (
                       <button
-                        onClick={async () => {
-                          const url = await signedUrl((f as any).storage_path, 60);
-                          if (url) window.open(url, '_blank');
-                        }}
-                        className="inline-flex h-10 items-center gap-2 rounded-lg bg-emerald-500 px-3 text-[13px] font-medium text-white shadow hover:brightness-95 sm:h-9 sm:text-sm"
+                        onClick={() => handleDownload(f)}
+                        className="inline-flex h-10 items-center gap-2 rounded-lg bg-emerald-500 px-3 text-[13px] font-medium text-white shadow hover:brightness-95 disabled:opacity-60 sm:h-9 sm:text-sm"
                         aria-label="Download"
+                        disabled={isDownloading}
+                        type="button"
                       >
-                        <Download className="h-4 w-4" />
-                        <span className="hidden sm:inline">Download</span>
+                        {isDownloading ? (
+                          <div className="h-4 w-4 animate-spin rounded-full border border-white/50 border-t-transparent" />
+                        ) : (
+                          <Download className="h-4 w-4" />
+                        )}
+                        <span className="hidden sm:inline">{isDownloading ? 'Mengunduh…' : 'Download'}</span>
                       </button>
                     )}
                     {showDeleteBtn && onDelete && (
@@ -314,6 +363,7 @@ export function SupabaseFileList({
                         onClick={() => onDelete(f.id as any)}
                         className="ml-auto inline-flex h-10 items-center gap-2 rounded-lg bg-rose-500 px-3 text-[13px] font-medium text-white shadow hover:brightness-95 sm:h-9 sm:text-sm"
                         aria-label="Hapus"
+                        type="button"
                       >
                         <Trash2 className="h-4 w-4" />
                         <span className="hidden sm:inline">Hapus</span>
@@ -326,7 +376,6 @@ export function SupabaseFileList({
           })}
         </div>
       ) : (
-        // ======================== LIST (mobile default) ========================
         <ul className="divide-y divide-border rounded-xl border">
           {filtered.map((f) => {
             const title = (f as any).title?.trim?.() || (f as any).original_name || '';
@@ -336,10 +385,10 @@ export function SupabaseFileList({
             const thumb = guessThumbUrl(f);
             const newest = f.id === newestId;
             const fileExt = (ext((f as any).storage_path) || 'file').toUpperCase();
+            const isDownloading = downloadingId === (f.id as any);
 
             return (
               <li key={f.id as any} className="flex items-center gap-3 p-3 sm:gap-4 sm:p-3.5">
-                {/* TOP-CROP thumb kecil */}
                 <div className="relative h-16 w-24 overflow-hidden rounded-lg border bg-muted sm:h-20 sm:w-28">
                   {thumb ? (
                     <img
@@ -376,7 +425,6 @@ export function SupabaseFileList({
                     <span title={`Diunggah: ${absolute} (WITA)`}>{relative}</span> • WITA
                   </div>
 
-                  {/* actions: ikon saja di mobile */}
                   <div className="mt-2 flex items-center gap-1.5 sm:gap-2">
                     {showViewBtn && (
                       <a
@@ -392,15 +440,18 @@ export function SupabaseFileList({
                     )}
                     {showDownloadBtn && (
                       <button
-                        onClick={async () => {
-                          const url = await signedUrl((f as any).storage_path, 60);
-                          if (url) window.open(url, '_blank');
-                        }}
-                        className="inline-flex h-10 items-center gap-2 rounded-lg bg-emerald-500 px-3 text-[13px] font-medium text-white shadow hover:brightness-95 sm:h-9 sm:text-sm"
+                        onClick={() => handleDownload(f)}
+                        className="inline-flex h-10 items-center gap-2 rounded-lg bg-emerald-500 px-3 text-[13px] font-medium text-white shadow hover:brightness-95 disabled:opacity-60 sm:h-9 sm:text-sm"
                         aria-label="Download"
+                        disabled={isDownloading}
+                        type="button"
                       >
-                        <Download className="h-4 w-4" />
-                        <span className="hidden sm:inline">Download</span>
+                        {isDownloading ? (
+                          <div className="h-4 w-4 animate-spin rounded-full border border-white/50 border-t-transparent" />
+                        ) : (
+                          <Download className="h-4 w-4" />
+                        )}
+                        <span className="hidden sm:inline">{isDownloading ? 'Mengunduh…' : 'Download'}</span>
                       </button>
                     )}
                     {showDeleteBtn && onDelete && (
@@ -408,6 +459,7 @@ export function SupabaseFileList({
                         onClick={() => onDelete(f.id as any)}
                         className="ml-auto inline-flex h-10 items-center gap-2 rounded-lg bg-rose-500 px-3 text-[13px] font-medium text-white shadow hover:brightness-95 sm:h-9 sm:text-sm"
                         aria-label="Hapus"
+                        type="button"
                       >
                         <Trash2 className="h-4 w-4" />
                         <span className="hidden sm:inline">Hapus</span>

@@ -81,13 +81,13 @@ const Download = () => {
 
           {/* File List (Supabase) */}
           <FileList
-  variant="download"
-  files={files}
-  isLoading={isLoading}
-  error={error}
-  onRefresh={fetchFiles}
-  showSkeleton={showSkeleton}
-/>
+            variant="download"
+            files={files}
+            isLoading={isLoading}
+            error={error}
+            onRefresh={fetchFiles}
+            showSkeleton={showSkeleton}
+          />
 
         </div>
       </div>
