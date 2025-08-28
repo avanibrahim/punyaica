@@ -38,6 +38,34 @@ const scaleIn = {
   visible: { opacity: 1, scale: 1, transition: { duration: 0.5, ease: easeOutExpo } },
 };
 
+// ===== Arah scroll (halus & ringan) =====
+function useScrollDir() {
+  const dirRef = useRef<'down' | 'up'>('down');
+  const [dir, setDir] = useState<'down' | 'up'>('down');
+  useEffect(() => {
+    let lastY = window.scrollY;
+    let ticking = false;
+    const onScroll = () => {
+      const y = window.scrollY;
+      const next = y > lastY ? 'down' : 'up';
+      lastY = y;
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          if (dirRef.current !== next) {
+            dirRef.current = next;
+            setDir(next);
+          }
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+  return dir;
+}
+
 function Reveal({
   children,
   variants = fadeUp,
@@ -54,11 +82,26 @@ function Reveal({
   const ref = useRef<HTMLDivElement | null>(null);
   const inView = useInView(ref, { margin: '-10% 0px -10% 0px', amount: 0.2 });
   const controls = useAnimation();
+  const dir = useScrollDir();
+  const shownOnce = useRef(false);
+  const reduceMotion =
+    typeof window !== 'undefined' &&
+    window.matchMedia &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   useEffect(() => {
-    if (inView) controls.start('visible');
-    else controls.start('hidden');
-  }, [inView, controls]);
+    if (reduceMotion) {
+      controls.set('visible'); // hormati preferensi: langsung muncul
+      shownOnce.current = true;
+      return;
+    }
+    // Hanya animasi saat masuk viewport & arah scroll ke bawah & belum pernah tampil
+    if (inView && dir === 'down' && !shownOnce.current) {
+      controls.start('visible');
+      shownOnce.current = true;
+    }
+    // Jangan pernah set 'hidden' saat keluar viewport → menghindari patah-patah saat scroll up
+  }, [inView, dir, controls, reduceMotion]);
 
   return (
     <As
@@ -68,6 +111,12 @@ function Reveal({
       animate={controls}
       transition={{ delay }}
       className={className}
+      style={{
+        willChange: 'transform, opacity',
+        backfaceVisibility: 'hidden',
+        WebkitFontSmoothing: 'antialiased',
+        transform: 'translateZ(0)',
+      }}
     >
       {children}
     </As>
@@ -137,7 +186,7 @@ export default function JournalList() {
   };
 
   const stats = [
-    { label: 'E‑Jurnal Terintegrasi', icon: BookOpen },
+    { label: 'E-Jurnal Terintegrasi', icon: BookOpen },
     { label: 'Manajemen Artikel (OJS)', icon: FileText },
     { label: 'Upload Jurnal', icon: CloudUpload },
     { label: 'Download Jurnal', icon: FileDown },
@@ -176,7 +225,7 @@ export default function JournalList() {
                 {/* Badge HMI */}
                 <Reveal as={motion.div} variants={scaleIn}>
                   <div className="inline-flex items-center gap-2 rounded-full border border-emerald-700 bg-white/70 px-3 py-1 text-emerald-700 shadow-sm backdrop-blur">
-                    <span className="text-xs font-semibold tracking-wide">Himpunan Mahasiswa Islam Gorontalo</span>
+                    <span className="text-xs font-semibold tracking-wide">HMI Gorontalo</span>
                   </div>
                 </Reveal>
 
@@ -199,7 +248,9 @@ export default function JournalList() {
                 {/* CTA */}
                 <Reveal as={motion.div} variants={fadeUp}>
                   <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-row sm:items-center md:items-start sm:justify-start sm:gap-4 pb-6">
-                    <a href="/upload" className="group inline-flex w-full justify-center sm:w-auto sm:justify-start items-center gap-2 rounded-xl px-5 py-3 md:px-7 md:py-3.5 text-sm md:text-base font-semibold text-white shadow-xl transition-all duration-300 bg-emerald-700 hover:bg-emerald-800 hover:shadow-2xl"
+                    <a
+                      href="/upload"
+                      className="group inline-flex w-full justify-center sm:w-auto sm:justify-start items-center gap-2 rounded-xl px-5 py-3 md:px-7 md:py-3.5 text-sm md:text-base font-semibold text-white shadow-xl transition-all duration-300 bg-emerald-700 hover:bg-emerald-800 hover:shadow-2xl"
                     >
                       Upload
                     </a>
@@ -236,7 +287,7 @@ export default function JournalList() {
                 <div className="relative w-44 h-44 sm:w-56 sm:h-56 md:w-80 md:h-80 lg:w-96 lg:h-96 rounded-2xl overflow-hidden">
                   <img
                     src="/hmi.png"
-                    alt="Logo HMI / E‑Journal"
+                    alt="Logo HMI / E-Journal"
                     className="h-full w-full object-contain p-3 md:p-6"
                     loading="eager"
                     decoding="async"

@@ -1,5 +1,5 @@
-import { useState, useEffect, ReactNode } from 'react';
-import { motion, useReducedMotion } from 'framer-motion';
+import { useState, useEffect, ReactNode, useRef } from 'react';
+import { motion, useReducedMotion, useAnimation, useInView } from 'framer-motion';
 import { useToast } from '@/hooks/useToast';
 import { ToastContainer } from '@/components/Toast';
 import { SupabaseFileList as FileList } from '@/components/SupabaseFileList';
@@ -7,39 +7,101 @@ import Layout from '@/components/Layout';
 import { Download as DownloadIcon, Sparkles, Info } from 'lucide-react';
 import { listFiles, removeFile, type FileItem } from '@/lib/supaFiles';
 
-// Reusable animated wrapper for sections
+// Hook: detect scroll direction (debounced via rAF)
+const useScrollDirection = (threshold = 2) => {
+  const [dir, setDir] = useState<'down' | 'up'>('down');
+  useEffect(() => {
+    let lastY = window.scrollY;
+    let ticking = false;
+
+    const update = () => {
+      const y = window.scrollY;
+      if (Math.abs(y - lastY) >= threshold) {
+        setDir(y > lastY ? 'down' : 'up');
+        lastY = y;
+      }
+      ticking = false;
+    };
+
+    const onScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(update);
+        ticking = true;
+      }
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [threshold]);
+
+  return dir;
+};
+
+// Reusable animated wrapper for sections — animates only when scrolled DOWN into view
 const AnimatedSection = ({ children, delay = 0, className = '' }: { children: ReactNode; delay?: number; className?: string }) => {
   const reduce = useReducedMotion();
+  const controls = useAnimation();
+  const ref = useRef<HTMLDivElement | null>(null);
+  const inView = useInView(ref, { margin: '-10% 0px -10% 0px' });
+  const direction = useScrollDirection();
+
+  useEffect(() => {
+    if (inView && direction === 'down') {
+      controls.start('visible');
+    }
+    // Do NOT reset to hidden when out of view to avoid choppy re-animations
+  }, [inView, direction, controls]);
+
   return (
     <motion.div
+      ref={ref}
       className={className}
       initial="hidden"
-      whileInView="visible"
-      viewport={{ once: false, amount: 0.2 }} // retrigger on scroll up/down
+      animate={controls}
       variants={{
         hidden: { opacity: 0, y: reduce ? 0 : 24 },
         visible: {
           opacity: 1,
           y: 0,
-          transition: { duration: 0.6, delay, ease: [0.22, 1, 0.36, 1] },
+          transition: { duration: 0.7, delay, ease: [0.16, 1, 0.3, 1] },
         },
       }}
+      style={{ willChange: 'transform, opacity' }}
     >
       {children}
     </motion.div>
   );
 };
 
-// Simple item animation (useful for small cards/rows)
+// Lightweight item-level animation with same scroll-down gating
 const AnimatedItem = ({ children, delay = 0, className = '' }: { children: ReactNode; delay?: number; className?: string }) => {
   const reduce = useReducedMotion();
+  const controls = useAnimation();
+  const ref = useRef<HTMLDivElement | null>(null);
+  const inView = useInView(ref, { margin: '-10% 0px -10% 0px' });
+  const direction = useScrollDirection();
+
+  useEffect(() => {
+    if (inView && direction === 'down') {
+      controls.start('visible');
+    }
+  }, [inView, direction, controls]);
+
   return (
     <motion.div
+      ref={ref}
       className={className}
-      initial={{ opacity: 0, y: reduce ? 0 : 16 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: false, amount: 0.2 }}
-      transition={{ duration: 0.5, delay, ease: [0.22, 1, 0.36, 1] }}
+      initial="hidden"
+      animate={controls}
+      variants={{
+        hidden: { opacity: 0, y: reduce ? 0 : 16 },
+        visible: {
+          opacity: 1,
+          y: 0,
+          transition: { duration: 0.6, delay, ease: [0.16, 1, 0.3, 1] },
+        },
+      }}
+      style={{ willChange: 'transform, opacity' }}
     >
       {children}
     </motion.div>
@@ -85,11 +147,11 @@ const Download = () => {
 
   return (
     <Layout>
-      {/* Page fade-in */}
+      {/* Page subtle mount (not scroll-triggered) */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ duration: 0.4 }}
+        transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
       >
         <div className="max-w-6xl mx-auto px-4 py-8">
           {/* Header */}
@@ -107,7 +169,7 @@ const Download = () => {
           <div className="space-y-6">
             {/* Info Section */}
             <AnimatedSection>
-              <div className="bg-gradient-accent border border-journal-border rounded-2xl p-6 shadow-xl">
+              <div className="bg-gradient-accent border border-journal-border rounded-2xl p-6 shadow-xl transform-gpu">
                 <div className="flex items-center gap-2 mb-4">
                   <Info className="h-5 w-5 text-primary" />
                   <h2 className="text-lg font-bold text-foreground">List Preview dan Download Jurnal</h2>
@@ -115,17 +177,15 @@ const Download = () => {
                 <p className="text-muted-foreground mb-4">
                   Halaman ini menampilkan semua file yang telah diupload. Anda dapat mendownload, melihat preview.
                 </p>
-
-                {/* Small cards with slight stagger */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                   <AnimatedItem>
-                    <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                    <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg border border-green-200 transform-gpu">
                       <div className="w-3 h-3 bg-green-500 rounded-full" />
                       <span className="text-green-700"><strong>Download:</strong> Unduh file ke perangkat</span>
                     </div>
                   </AnimatedItem>
                   <AnimatedItem delay={0.08}>
-                    <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                    <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg border border-green-200 transform-gpu">
                       <div className="w-3 h-3 bg-green-500 rounded-full" />
                       <span className="text-green-700"><strong>Lihat:</strong> Preview file di tab baru</span>
                     </div>
@@ -148,8 +208,8 @@ const Download = () => {
           </div>
         </div>
 
-        {/* Toast Container (subtle mount motion) */}
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+        {/* Toast Container (static mount) */}
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}>
           <ToastContainer toasts={toast.toasts} onRemove={toast.removeToast} />
         </motion.div>
       </motion.div>

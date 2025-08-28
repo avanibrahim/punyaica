@@ -12,26 +12,58 @@ import FileUpload from '@/components/FileUpload';
 // ⬇️ helper Supabase yang sudah kita buat sebelumnya
 import { uploadFile } from '@/lib/supaFiles';
 
-// ------- Animations helpers (smooth scroll down & up) -------
+// ======================
+// Smooth Scroll Animations
+// ======================
+// Variants hanya pakai transform & opacity (aman & ringan)
 const fadeUp = {
-  hidden: { opacity: 0, y: 20 },
+  hidden: { opacity: 0, y: 16 },
   visible: { opacity: 1, y: 0 },
 };
 
 const fadeUpSm = {
-  hidden: { opacity: 0, y: 10 },
+  hidden: { opacity: 0, y: 8 },
   visible: { opacity: 1, y: 0 },
 };
 
 const stagger = {
   hidden: {},
-  visible: { transition: { staggerChildren: 0.08 } },
+  visible: { transition: { staggerChildren: 0.07 } },
 };
 
+// Hook untuk mendeteksi arah scroll secara halus (tanpa patah-patah)
+function useScrollDirection({ initial = 'down', threshold = 6 }: { initial?: 'down' | 'up'; threshold?: number } = {}) {
+  const lastY = useRef<number>(typeof window !== 'undefined' ? window.scrollY : 0);
+  const dirRef = useRef<'down' | 'up'>(initial);
+  const [dir, setDir] = useState<'down' | 'up'>(initial);
+
+  useEffect(() => {
+    let ticking = false;
+    const onScroll = () => {
+      const y = window.scrollY || 0;
+      const delta = y - lastY.current;
+      if (Math.abs(delta) < threshold) return; // debounce arah
+      dirRef.current = delta > 0 ? 'down' : 'up';
+      lastY.current = y;
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          setDir(dirRef.current);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [threshold]);
+
+  return dir;
+}
+
 /**
- * Wrapper untuk membuat elemen beranimasi saat masuk/keluar viewport
+ * Wrapper yang memutar animasi HANYA saat elemen memasuki viewport ketika scroll ke BAWAH.
  * - Tidak mengubah UI (hanya opacity & translateY)
- * - Animasi ulang saat scroll ke bawah atau ke atas (useInView + controls)
+ * - Animasi muncul sekali saja; saat scroll ke atas tidak diputar ulang (menghindari patah-patah)
  */
 function AnimateOnView({
   children,
@@ -39,21 +71,36 @@ function AnimateOnView({
   variants = fadeUp,
   amount = 0.25,
   delay = 0,
+  scrollDir,
 }: {
   children: React.ReactNode;
   className?: string;
   variants?: any;
-  amount?: number; // seberapa besar elemen harus terlihat untuk trigger
+  amount?: number;
   delay?: number;
+  scrollDir: 'down' | 'up';
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
   const controls = useAnimation();
-  const inView = useInView(ref, { amount });
+  const inView = useInView(ref, {
+    amount,
+    margin: '-10% 0px -10% 0px', // trigger sedikit lebih awal agar smooth
+  });
+  const hasShownRef = useRef(false);
+
+  // Pastikan start dari hidden (tanpa jump)
+  useEffect(() => {
+    controls.set('hidden');
+  }, [controls]);
 
   useEffect(() => {
-    if (inView) controls.start('visible');
-    else controls.start('hidden');
-  }, [inView, controls]);
+    if (hasShownRef.current) return; // sudah pernah tampil
+    if (inView && scrollDir === 'down') {
+      hasShownRef.current = true;
+      controls.start('visible');
+    }
+    // Catatan: saat scroll ke atas, kita tidak mengubah state — mencegah animasi reverse
+  }, [inView, scrollDir, controls]);
 
   return (
     <motion.div
@@ -61,8 +108,9 @@ function AnimateOnView({
       initial="hidden"
       animate={controls}
       variants={variants}
-      transition={{ type: 'spring', stiffness: 120, damping: 20, mass: 0.6, delay }}
+      transition={{ type: 'tween', ease: [0.22, 1, 0.36, 1], duration: 0.5, delay }}
       className={className}
+      style={{ willChange: 'opacity, transform' }}
     >
       {children}
     </motion.div>
@@ -77,6 +125,8 @@ export default function Upload() {
   const [file, setFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+
+  const scrollDir = useScrollDirection();
 
   const onFilePick = (f: File | undefined) => {
     if (!f) return;
@@ -129,29 +179,23 @@ export default function Upload() {
 
   return (
     <Layout>
-      {/* Page container with subtle entrance */}
-      <AnimateOnView className="max-w-6xl mx-auto px-4 py-8" variants={stagger}>
+      {/* Page container */}
+      <AnimateOnView className="max-w-6xl mx-auto px-4 py-8" variants={stagger} scrollDir={scrollDir}>
         {/* Header */}
-        <AnimateOnView className="text-center mb-8" variants={stagger}>
+        <AnimateOnView className="text-center mb-8" variants={stagger} scrollDir={scrollDir}>
           <motion.div className="flex items-center justify-center gap-3 mb-2" variants={fadeUp}>
-            <motion.h1
-              className="text-3xl md:text-4xl font-bold text-foreground"
-              variants={fadeUp}
-            >
+            <motion.h1 className="text-3xl md:text-4xl font-bold text-foreground" variants={fadeUp}>
               Unggah Jurnal Anda
             </motion.h1>
           </motion.div>
-          <motion.p
-            className="text-muted-foreground flex items-center justify-center gap-2"
-            variants={fadeUpSm}
-          >
+          <motion.p className="text-muted-foreground flex items-center justify-center gap-2" variants={fadeUpSm}>
             <span>Drag & Drop | Progress Bar | Upload Mudah</span>
           </motion.p>
         </AnimateOnView>
 
         <div className="space-y-6">
           {/* Upload Section */}
-          <AnimateOnView variants={fadeUp}>
+          <AnimateOnView variants={fadeUp} scrollDir={scrollDir}>
             <FileUpload
               onUploadStart={handleUploadStart}
               onUploadSuccess={handleUploadSuccess}
@@ -160,10 +204,7 @@ export default function Upload() {
           </AnimateOnView>
 
           {/* Help Section */}
-          <AnimateOnView
-            className="bg-gradient-accent border border-journal-border rounded-2xl p-6 shadow-xl"
-            variants={stagger}
-          >
+          <AnimateOnView className="bg-gradient-accent border border-journal-border rounded-2xl p-6 shadow-xl" variants={stagger} scrollDir={scrollDir}>
             <motion.div className="flex items-center gap-2 mb-4" variants={fadeUpSm}>
               <Lightbulb className="h-5 w-5 text-primary" />
               <h2 className="text-lg font-bold text-foreground">Tips Upload</h2>
